@@ -1,0 +1,3 @@
+fmt:
+	go fmt -n -x ./...
+	go mod tidy

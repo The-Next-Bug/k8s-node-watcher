@@ -1,12 +1,16 @@
 package k8s
 
 import (
+	"context"
 	log "github.com/sirupsen/logrus"
 
   clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	
+	"k8s.io/api/core/v1"
 
 	"The-Next-Bug/k8s-node-watcher/internal/config"
 )
@@ -58,8 +62,35 @@ func New(config *config.Config) (*Client, error) {
 	}, nil
 }
 
-// Placeholder
-func (c *Client) Clientset() *kubernetes.Clientset {
-	return c.clientset	
+func (c *Client) NodeWatch() error {
+	nodeWatch, err := c.clientset.CoreV1().
+		Nodes().Watch(context.TODO(), metav1.ListOptions{})
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Error("unable to start Node Watcher")
+
+		return err
+	}
+
+	defer nodeWatch.Stop()
+	
+	eventChannel := nodeWatch.ResultChan()
+
+	for {
+		event := <-eventChannel
+
+		node := event.Object.(*v1.Node)
+		addresses := NewEndpoint(node.Status.Addresses)
+
+		log.WithFields(log.Fields{
+			"type":   event.Type,
+			"id":     node.Spec.ProviderID,
+			"status": addresses,
+		}).Debugf("node update")
+	}
+
+	return nil
 }
 
