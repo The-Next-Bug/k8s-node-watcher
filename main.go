@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 
-  log "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"k8s.io/api/core/v1"
 
@@ -16,27 +14,18 @@ import (
 )
 
 func main() {
-	/*var kubeconfig *string
 
-	kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	
-	flag.Parse()*/
+	config := selfConfig.InitConfig()
 
-	watchConfig := selfConfig.InitConfig()	
-
-	// use the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", watchConfig.KubeconfigPath)
+	client, err := k8s.New(config)
 	if err != nil {
-		panic(err.Error())
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Fatal("unable to create k8s client")
 	}
 
-	// create the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	nodeWatch, err := clientset.CoreV1().Nodes().Watch(context.TODO(), metav1.ListOptions{})
+	nodeWatch, err := clientset.CoreV1().Nodes().Watch(context.TODO(), metav1.ListOptions{}) */
+	nodeWatch, err := client.Clientset().CoreV1().Nodes().Watch(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
 	}
@@ -45,14 +34,14 @@ func main() {
 	eventChannel := nodeWatch.ResultChan()
 
 	for {
-		event := <- eventChannel
+		event := <-eventChannel
 
 		node := event.Object.(*v1.Node)
 		addresses := k8s.NewEndpoint(node.Status.Addresses)
 
 		log.WithFields(log.Fields{
-			"type": event.Type,
-			"id": node.Spec.ProviderID,
+			"type":   event.Type,
+			"id":     node.Spec.ProviderID,
 			"status": addresses,
 		}).Infof("node update")
 	}

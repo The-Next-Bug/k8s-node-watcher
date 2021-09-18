@@ -11,6 +11,7 @@ import (
 
 
 type Config struct {
+	KubeMaster string `yaml:kube_master`
 	KubeconfigPath string `yaml:kubeconfig`
 	HAProxyPath string `yaml:haproxy`
 }
@@ -39,7 +40,7 @@ func InitConfig() *Config {
 	if err := viper.ReadInConfig() ; err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
-		}).Warnf("no config file found")
+		}).Warnf("no config file found, using defaults")
 	} else if err := viper.Unmarshal(&config) ; err != nil {
 		log.Fatalf("unable to decode into struct, %v", err)
 	}
