@@ -70,6 +70,6 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	if err := client.NodeWatch(); err != nil {
-		panic(err.Error())
+		cobra.CheckErr(err.Error())
 	}
 }
