@@ -24,7 +24,6 @@ func main() {
 		}).Fatal("unable to create k8s client")
 	}
 
-	nodeWatch, err := clientset.CoreV1().Nodes().Watch(context.TODO(), metav1.ListOptions{}) */
 	nodeWatch, err := client.Clientset().CoreV1().Nodes().Watch(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
