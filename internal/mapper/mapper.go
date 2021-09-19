@@ -11,18 +11,17 @@ import (
 
 func New(backend string, haProxyClient *haproxy.Client, useExternal bool) (*Mapper, error) {
 
-	// populate pool of servers
-	serverPool, err := haProxyClient.GetServerNames(backend)
-	if err != nil {
-		return nil, err
-	}
-
 	mapper := &Mapper{
 		haProxyClient: haProxyClient,
 		useExternal:   useExternal,
 		backend:       backend,
-		serverPool:    serverPool,
 		serverMap:     make(map[string]*serverMapping),
+	}
+
+	// If we can't get the initial serverPool, something
+	// is very broken.
+	if err := mapper.resetServerPool(); err != nil {
+		return nil, err
 	}
 
 	// Now we need to build out a server stream
