@@ -11,6 +11,7 @@ k8s-node-watcher: fmt
 
 clean:
 	go clean -v
+	rm -rf dist/
 
 snapshot: clean
 	goreleaser build --rm-dist --snapshot

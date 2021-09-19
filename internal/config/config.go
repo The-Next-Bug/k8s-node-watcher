@@ -23,6 +23,7 @@ type HAProxyConfig struct {
 }
 
 type Config struct {
+	UseExternal    bool          `mapstructure:"use_external"`
 	KubeMaster     string        `mapstructure:"kube_master"`
 	KubeconfigPath string        `mapstructure:"kubeconfig"`
 	HAProxy        HAProxyConfig `mapstructure:"haproxy"`

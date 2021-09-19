@@ -29,7 +29,7 @@ func (c *Client) GetBackendNames() []string {
 	return backends
 }
 
-func (c *Client) GetServerNames(backend string) []string {
+func (c *Client) GetServerNames(backend string) ([]string, error) {
 	runtimeClient := c.client.GetRuntime()
 
 	rawServers, err := runtimeClient.GetServersState(backend)
@@ -38,6 +38,8 @@ func (c *Client) GetServerNames(backend string) []string {
 			"err":     err,
 			"backend": backend,
 		}).Error("unable to get servers for backed")
+
+		return nil, err
 	}
 
 	servers := make([]string, 0, 1)
@@ -45,7 +47,7 @@ func (c *Client) GetServerNames(backend string) []string {
 		servers = append(servers, server.Name)
 	}
 
-	return servers
+	return servers, nil
 }
 
 func (c *Client) LogBackends() {
@@ -60,7 +62,7 @@ func (c *Client) LogServers() {
 	backends := c.GetBackendNames()
 
 	for _, backend := range backends {
-		servers := c.GetServerNames(backend)
+		servers, _ := c.GetServerNames(backend)
 		log.WithFields(log.Fields{
 			"backend": backend,
 			"servers": servers,

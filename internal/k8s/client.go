@@ -5,6 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	watchv1 "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -62,7 +63,7 @@ func New(config *config.Config) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) NodeWatch() error {
+func (c *Client) NodeWatch(listener NodeListener) error {
 	nodeWatch, err := c.clientset.CoreV1().
 		Nodes().Watch(context.TODO(), metav1.ListOptions{})
 
@@ -81,14 +82,44 @@ func (c *Client) NodeWatch() error {
 	for {
 		event := <-eventChannel
 
+		// This will need to be revisited at a later date.
+		// TODO: Fix error handling
+		if event.Type == watchv1.Error {
+			log.WithFields(log.Fields{
+				"err":  event.Object,
+				"type": event.Type,
+			}).Error("error event seen, ignoring")
+			continue
+		}
+
 		node := event.Object.(*v1.Node)
-		addresses := NewEndpoint(node.Status.Addresses)
+		endpoint := NewEndpoint(node.Spec.ProviderID, node.Status.Addresses)
 
 		log.WithFields(log.Fields{
 			"type":   event.Type,
 			"id":     node.Spec.ProviderID,
-			"status": addresses,
-		}).Debugf("node update")
+			"status": endpoint,
+		}).Debug("node event")
+
+		switch event.Type {
+		case watchv1.Added:
+			listener.Add(endpoint)
+
+		case watchv1.Modified:
+			listener.Modify(endpoint)
+
+		case watchv1.Deleted:
+			listener.Delete(endpoint)
+
+		case watchv1.Bookmark:
+			listener.Bookmark(endpoint)
+
+		default:
+			log.WithFields(log.Fields{
+				"type":  event.Type,
+				"error": event.Object,
+			}).Error("unknown event type")
+		}
 	}
 
 	return nil

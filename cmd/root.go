@@ -8,6 +8,7 @@ import (
 	selfConfig "The-Next-Bug/k8s-node-watcher/internal/config"
 	"The-Next-Bug/k8s-node-watcher/internal/haproxy"
 	"The-Next-Bug/k8s-node-watcher/internal/k8s"
+	"The-Next-Bug/k8s-node-watcher/internal/mapper"
 )
 
 var cfgFile string
@@ -75,7 +76,14 @@ func run(cmd *cobra.Command, args []string) {
 	haProxyClient.LogBackends()
 	haProxyClient.LogServers()
 
-	if err := client.NodeWatch(); err != nil {
+	mapper, err := mapper.New("k8s", haProxyClient, config.UseExternal)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"errr": err,
+		}).Fatal("unable to build mapper")
+	}
+
+	if err := client.NodeWatch(mapper); err != nil {
 		cobra.CheckErr(err.Error())
 	}
 }
