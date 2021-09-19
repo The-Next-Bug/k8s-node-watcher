@@ -1,19 +1,24 @@
 package k8s
 
 import (
+	"fmt"
+
 	"k8s.io/api/core/v1"
 )
 
 // Stores information about discovered nodes and their IPs
 type Endpoint struct {
+	ID         string
 	HostName   string
 	InternalIP string
 	ExternalIP string
 }
 
 // Create a new Endpoint from a k8s NodeAddress block
-func NewEndpoint(addresses []v1.NodeAddress) *Endpoint {
-	e := &Endpoint{}
+func NewEndpoint(id string, addresses []v1.NodeAddress) *Endpoint {
+	e := &Endpoint{
+		ID: id,
+	}
 
 	for _, item := range addresses {
 		switch item.Type {
@@ -29,4 +34,15 @@ func NewEndpoint(addresses []v1.NodeAddress) *Endpoint {
 	}
 
 	return e
+}
+
+type NodeListener interface {
+	Add(node *Endpoint)
+	Modify(node *Endpoint)
+	Delete(node *Endpoint)
+	Bookmark(node *Endpoint)
+}
+
+func (e *Endpoint) String() string {
+	return fmt.Sprintf("%+v", *e)
 }

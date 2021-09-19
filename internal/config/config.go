@@ -23,6 +23,8 @@ type HAProxyConfig struct {
 }
 
 type Config struct {
+	UseExternal    bool          `mapstructure:"use_external"`
+	ResyncSeconds  int64         `mapstructure:"resync_seconds"`
 	KubeMaster     string        `mapstructure:"kube_master"`
 	KubeconfigPath string        `mapstructure:"kubeconfig"`
 	HAProxy        HAProxyConfig `mapstructure:"haproxy"`
@@ -76,6 +78,13 @@ func GetConfig() *Config {
 
 	if config.HAProxy.TransactionDir == "" {
 		config.HAProxy.TransactionDir = DefaultTransactionDir
+	}
+
+	// Do not allow resync faster than every ten seconds
+	if config.ResyncSeconds < 10 {
+		config.ResyncSeconds = 10
+
+		log.Warn("defaulting resync interval to 10 seconds")
 	}
 
 	log.WithFields(log.Fields{

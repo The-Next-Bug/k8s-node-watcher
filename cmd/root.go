@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -8,6 +10,7 @@ import (
 	selfConfig "The-Next-Bug/k8s-node-watcher/internal/config"
 	"The-Next-Bug/k8s-node-watcher/internal/haproxy"
 	"The-Next-Bug/k8s-node-watcher/internal/k8s"
+	"The-Next-Bug/k8s-node-watcher/internal/mapper"
 )
 
 var cfgFile string
@@ -55,6 +58,28 @@ func initConfig() {
 	selfConfig.InitConfig(cfgFile)
 }
 
+func resync(mappers []mapper.BackendMapper, interval time.Duration) *time.Ticker {
+	ticker := time.NewTicker(interval)
+
+	go func() {
+		for range ticker.C {
+			log.Debug("sync all triggered")
+
+			for _, mapper := range mappers {
+				err := mapper.SyncAll()
+				if err != nil {
+					log.WithFields(log.Fields{
+						"mapper": mapper,
+						"err":    err,
+					}).Error("unable to sync backend")
+				}
+			}
+		}
+	}()
+
+	return ticker
+}
+
 func run(cmd *cobra.Command, args []string) {
 	config := selfConfig.GetConfig()
 
@@ -72,10 +97,36 @@ func run(cmd *cobra.Command, args []string) {
 		}).Fatal("unable to create HAProxy client")
 	}
 
-	haProxyClient.LogBackends()
-	haProxyClient.LogServers()
+	backends, err := haProxyClient.GetBackendNames()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Fatal("unable to load HAProxy backends")
+	}
 
-	if err := client.NodeWatch(); err != nil {
+	backendMappers := make([]mapper.BackendMapper, len(backends))
+	for i, backend := range backends {
+		backendMapper, err := mapper.New(backend, haProxyClient, config.UseExternal)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"errr": err,
+			}).Fatal("unable to build mapper")
+		}
+
+		backendMappers[i] = backendMapper
+	}
+
+	// Start resync operations
+	syncTicker := resync(backendMappers, time.Duration(config.ResyncSeconds)*time.Second)
+	defer syncTicker.Stop()
+
+	// We need NodeListeners here.
+	nodeListeners := make([]k8s.NodeListener, len(backendMappers))
+	for i, m := range backendMappers {
+		nodeListeners[i] = m
+	}
+
+	if err := client.NodeWatch(nodeListeners); err != nil {
 		cobra.CheckErr(err.Error())
 	}
 }

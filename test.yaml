@@ -1,4 +1,5 @@
 ---
+use_external: true
 haproxy:
   # path: /tmp/haproxy.socket 
   bin: /usr/local/opt/haproxy/bin/haproxy
