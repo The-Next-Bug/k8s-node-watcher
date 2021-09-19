@@ -4,19 +4,19 @@ import (
 	"context"
 	log "github.com/sirupsen/logrus"
 
-  clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	
+	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
 	"k8s.io/api/core/v1"
 
 	"The-Next-Bug/k8s-node-watcher/internal/config"
 )
 
 type Client struct {
-	clientset      *kubernetes.Clientset
+	clientset *kubernetes.Clientset
 }
 
 // This is effectiely a copy of clientcmd.BuildConfigFromFlags with different log
@@ -25,7 +25,7 @@ func buildKubeconfig(config *config.Config) (*restclient.Config, error) {
 	if config.KubeconfigPath == "" && config.KubeMaster == "" {
 		log.Warning("no kubeconfig or master url specified, using the inClusterConfig")
 		kubeconfig, err := restclient.InClusterConfig()
-		
+
 		if err == nil {
 			return kubeconfig, nil
 		}
@@ -38,7 +38,7 @@ func buildKubeconfig(config *config.Config) (*restclient.Config, error) {
 		&clientcmd.ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{Server: config.KubeMaster}}).ClientConfig()
 }
 
-// Instantiate the k8s client library 
+// Instantiate the k8s client library
 func New(config *config.Config) (*Client, error) {
 	kubeconfig, err := buildKubeconfig(config)
 	if err != nil {
@@ -75,7 +75,7 @@ func (c *Client) NodeWatch() error {
 	}
 
 	defer nodeWatch.Stop()
-	
+
 	eventChannel := nodeWatch.ResultChan()
 
 	for {
@@ -93,4 +93,3 @@ func (c *Client) NodeWatch() error {
 
 	return nil
 }
-

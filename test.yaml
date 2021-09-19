@@ -1,0 +1,12 @@
+---
+haproxy:
+  # path: /tmp/haproxy.socket 
+  bin: /usr/local/opt/haproxy/bin/haproxy
+
+  # config: /dev/null
+  config: scripts/haproxy.cfg
+
+  backends:
+    - k8s
+    - k8s_ssl
+   
