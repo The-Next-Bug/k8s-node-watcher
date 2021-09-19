@@ -58,6 +58,7 @@ func (m *Mapper) logStats() {
 func (m *Mapper) Add(endpoint *k8s.Endpoint) {
 	logEvent("added", endpoint)
 
+	m.Lock()
 	if _, ok := m.serverMap[endpoint.ID]; ok {
 		log.WithFields(log.Fields{
 			"endpoint": endpoint,
@@ -65,9 +66,11 @@ func (m *Mapper) Add(endpoint *k8s.Endpoint) {
 		}).Warn("added an existing endpoint")
 
 		// This should not happen.
+		m.Unlock()
 		m.Modify(endpoint)
 		return
 	}
+	defer m.Unlock()
 
 	mapping := &serverMapping{}
 	m.serverMap[endpoint.ID] = mapping
@@ -85,6 +88,8 @@ func (m *Mapper) Add(endpoint *k8s.Endpoint) {
 func (m *Mapper) Delete(endpoint *k8s.Endpoint) {
 	logEvent("deleted", endpoint)
 
+	m.Lock()
+	defer m.Unlock()
 	mapping, ok := m.serverMap[endpoint.ID]
 	if !ok {
 		log.WithFields(log.Fields{
@@ -110,6 +115,7 @@ func (m *Mapper) Delete(endpoint *k8s.Endpoint) {
 func (m *Mapper) Modify(endpoint *k8s.Endpoint) {
 	logEvent("modified", endpoint)
 
+	m.Lock()
 	mapping, ok := m.serverMap[endpoint.ID]
 	if !ok {
 		log.WithFields(log.Fields{
@@ -118,9 +124,11 @@ func (m *Mapper) Modify(endpoint *k8s.Endpoint) {
 		}).Warn("modify for unknown endpoint")
 
 		// This should not happen
+		m.Unlock()
 		m.Add(endpoint)
 		return
 	}
+	defer m.Unlock()
 
 	err := mapping.Sync(m, endpoint)
 	if err != nil {

@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"fmt"
+	"sync"
 
 	"The-Next-Bug/k8s-node-watcher/internal/haproxy"
 	"The-Next-Bug/k8s-node-watcher/internal/k8s"
@@ -19,6 +20,8 @@ type serverMapping struct {
 }
 
 type Mapper struct {
+	sync.RWMutex
+
 	haProxyClient *haproxy.Client
 
 	// If set to true, uses the external IP the endpoint

@@ -22,6 +22,10 @@ func (m *Mapper) resetServerPool() error {
 }
 
 func (m *Mapper) SyncAll() error {
+	log.WithFields(log.Fields{
+		"backend": m.backend,
+	}).Info("sync triggered")
+
 	if err := m.resetServerPool(); err != nil {
 		log.WithFields(log.Fields{
 			"backend": m.backend,
@@ -29,6 +33,9 @@ func (m *Mapper) SyncAll() error {
 		}).Error("unable to reset the server pool")
 		return err
 	}
+
+	m.RLock()
+	defer m.RUnlock()
 
 	// Remap all endpoints
 	for _, mapping := range m.serverMap {
