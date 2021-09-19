@@ -52,6 +52,20 @@ func New(backend string, haProxyClient *haproxy.Client, useExternal bool) (*Mapp
 	return mapper, nil
 }
 
+func (m *Mapper) nextIdle() (*k8s.Endpoint, error) {
+	var next *k8s.Endpoint
+	if len(m.idleEndpoints) == 0 {
+		log.WithFields(log.Fields{
+			"backend": m.backend,
+		}).Debug("no idle endpoints")
+		return nil, fmt.Errorf("no idle endpoints")
+	}
+
+	next, m.idleEndpoints = m.idleEndpoints[0], m.idleEndpoints[1:]
+
+	return next, nil
+}
+
 func (m *Mapper) nextServer() (string, error) {
 	var next string
 	if len(m.serverPool) == 0 {
@@ -101,6 +115,8 @@ func (m *Mapper) mapServer(endpoint *k8s.Endpoint) (*serverMapping, error) {
 	}
 
 	if err := m.haProxyClient.EnableServer(m.backend, server, ip); err != nil {
+		// make sure to release the server if HAProxy can't add it.
+		m.releaseServer(server)
 		return nil, err
 	}
 
@@ -120,6 +136,7 @@ func (m *Mapper) Add(endpoint *k8s.Endpoint) {
 		log.WithFields(log.Fields{
 			"endpoint": endpoint,
 			"backend":  m.backend,
+			"err":      err,
 		}).Warn("endpoint idle, no server available")
 
 		return
@@ -136,6 +153,52 @@ func (m *Mapper) Add(endpoint *k8s.Endpoint) {
 
 func (m *Mapper) Delete(endpoint *k8s.Endpoint) {
 	logEvent("deleted", endpoint)
+
+	mapping, ok := m.serverMap[endpoint.ID]
+	if !ok {
+		log.WithFields(log.Fields{
+			"endpoint": endpoint,
+			"backend":  m.backend,
+		}).Warn("delete for unknown server")
+
+		return
+	}
+
+	// TODO: This has the potential to lead to configuration drift.
+	err := m.haProxyClient.DisableServer(m.backend, mapping.server)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"endpoint": endpoint,
+			"server":   mapping.server,
+			"backend":  m.backend,
+			"err":      err,
+		}).Error("unable to disable server")
+	}
+
+	delete(m.serverMap, endpoint.ID)
+	m.releaseServer(mapping.server)
+
+	// see if we can map any idle servers
+	for {
+		idle, err := m.nextIdle()
+		if err != nil {
+			// no servers to map
+			break
+		}
+
+		mapping, err := m.mapServer(idle)
+		if err != nil {
+			// make sure to put the idle server back if we can't map it.
+			m.idleEndpoints = append(m.idleEndpoints, idle)
+			break
+		}
+
+		log.WithFields(log.Fields{
+			"enpdpoint": endpoint,
+			"server":    mapping.server,
+			"backend":   m.backend,
+		}).Info("adding endpoint -> server mapping")
+	}
 
 	m.logStats()
 }

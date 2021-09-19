@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"fmt"
+
 	"k8s.io/api/core/v1"
 )
 
@@ -39,4 +41,8 @@ type NodeListener interface {
 	Modify(node *Endpoint)
 	Delete(node *Endpoint)
 	Bookmark(node *Endpoint)
+}
+
+func (e *Endpoint) String() string {
+	return fmt.Sprintf("%+v", *e)
 }
