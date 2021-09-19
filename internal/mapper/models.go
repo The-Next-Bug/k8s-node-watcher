@@ -7,6 +7,12 @@ import (
 	"The-Next-Bug/k8s-node-watcher/internal/k8s"
 )
 
+type BackendMapper interface {
+	k8s.NodeListener
+
+	SyncAll() error
+}
+
 type serverMapping struct {
 	server   string
 	endpoint *k8s.Endpoint

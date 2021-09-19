@@ -9,7 +9,7 @@ import (
 	"The-Next-Bug/k8s-node-watcher/internal/k8s"
 )
 
-func New(backend string, haProxyClient *haproxy.Client, useExternal bool) (*Mapper, error) {
+func New(backend string, haProxyClient *haproxy.Client, useExternal bool) (BackendMapper, error) {
 
 	mapper := &Mapper{
 		haProxyClient: haProxyClient,

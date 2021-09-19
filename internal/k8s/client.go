@@ -63,7 +63,7 @@ func New(config *config.Config) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) NodeWatch(listener NodeListener) error {
+func (c *Client) NodeWatch(listeners []NodeListener) error {
 	nodeWatch, err := c.clientset.CoreV1().
 		Nodes().Watch(context.TODO(), metav1.ListOptions{})
 
@@ -101,24 +101,26 @@ func (c *Client) NodeWatch(listener NodeListener) error {
 			"status": endpoint,
 		}).Debug("node event")
 
-		switch event.Type {
-		case watchv1.Added:
-			listener.Add(endpoint)
+		for _, listener := range listeners {
+			switch event.Type {
+			case watchv1.Added:
+				listener.Add(endpoint)
 
-		case watchv1.Modified:
-			listener.Modify(endpoint)
+			case watchv1.Modified:
+				listener.Modify(endpoint)
 
-		case watchv1.Deleted:
-			listener.Delete(endpoint)
+			case watchv1.Deleted:
+				listener.Delete(endpoint)
 
-		case watchv1.Bookmark:
-			listener.Bookmark(endpoint)
+			case watchv1.Bookmark:
+				listener.Bookmark(endpoint)
 
-		default:
-			log.WithFields(log.Fields{
-				"type":  event.Type,
-				"error": event.Object,
-			}).Error("unknown event type")
+			default:
+				log.WithFields(log.Fields{
+					"type":  event.Type,
+					"error": event.Object,
+				}).Error("unknown event type")
+			}
 		}
 	}
 
