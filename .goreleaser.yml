@@ -43,7 +43,7 @@ release:
 
   prerelease: auto
 
-  name_template: "{{.ProjectName}}-v{{.Version}} {{.Env.USER}}"
+  name_template: "{{.ProjectName}}-v{{.Version}}"
 
   header: |
     ## {{.ProjectName}}-v{{.Version}} ({{ .Date }})
