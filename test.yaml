@@ -2,7 +2,8 @@
 use_external: true
 haproxy:
   # path: /tmp/haproxy.socket 
-  bin: /usr/local/opt/haproxy/bin/haproxy
+  #bin: /usr/local/opt/haproxy/bin/haproxy
+  bin: /opt/homebrew/opt/haproxy/bin/haproxy
 
   # config: /dev/null
   config: scripts/haproxy.cfg
