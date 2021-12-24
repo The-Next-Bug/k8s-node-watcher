@@ -126,7 +126,14 @@ func run(cmd *cobra.Command, args []string) {
 		nodeListeners[i] = m
 	}
 
-	if err := client.NodeWatch(nodeListeners); err != nil {
-		cobra.CheckErr(err.Error())
+	// This should never exit.
+	for restarts := 0; restarts < 5; restarts++ {
+		if err := client.NodeWatch(nodeListeners); err != nil {
+			cobra.CheckErr(err.Error())
+		}
+
+		log.WithFields(log.Fields{
+			"restarts": restarts,
+		}).Warn("node watch exited, restarting")
 	}
 }

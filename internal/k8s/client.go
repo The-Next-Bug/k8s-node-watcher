@@ -79,8 +79,7 @@ func (c *Client) NodeWatch(listeners []NodeListener) error {
 
 	eventChannel := nodeWatch.ResultChan()
 
-	for {
-		event := <-eventChannel
+	for event := range eventChannel {
 
 		// This will need to be revisited at a later date.
 		// TODO: Fix error handling
@@ -90,13 +89,6 @@ func (c *Client) NodeWatch(listeners []NodeListener) error {
 				"type": event.Type,
 			}).Error("error event seen, ignoring")
 			continue
-		}
-
-		if event.Object == nil {
-			log.WithFields(log.Fields{
-				"type": event.Type,
-			}).Error("event with nil object, ignoring")
-      continue
 		}
 
 		node := event.Object.(*v1.Node)
@@ -130,6 +122,8 @@ func (c *Client) NodeWatch(listeners []NodeListener) error {
 			}
 		}
 	}
+
+	log.WithFields(log.Fields{}).Warn("watcher disconnected")
 
 	return nil
 }
