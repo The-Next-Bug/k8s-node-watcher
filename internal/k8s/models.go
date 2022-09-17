@@ -2,6 +2,9 @@ package k8s
 
 import (
 	"fmt"
+	"regexp"
+
+	log "github.com/sirupsen/logrus"
 
 	"k8s.io/api/core/v1"
 )
@@ -12,6 +15,19 @@ type Endpoint struct {
 	HostName   string
 	InternalIP string
 	ExternalIP string
+}
+
+func isIpv4(ip string) bool {
+	matched, err := regexp.MatchString(`^([0-9]{1,3}\.){3}[0-9]{1,3}$`, ip)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+			"ip" : ip,
+		}).Error("bad ip or regular experession")
+		return false
+	}
+
+	return matched
 }
 
 // Create a new Endpoint from a k8s NodeAddress block
@@ -25,7 +41,14 @@ func NewEndpoint(id string, addresses []v1.NodeAddress) *Endpoint {
 		case v1.NodeHostName:
 			e.HostName = item.Address
 		case v1.NodeInternalIP:
-			e.InternalIP = item.Address
+			if isIpv4(item.Address) {
+				e.InternalIP = item.Address
+      } else {
+				log.WithFields(log.Fields{
+					"ip": item.Address,
+					"id": id,
+				}).Info("found IPV6 ignoring")
+			}
 		case v1.NodeExternalIP:
 			e.ExternalIP = item.Address
 		default:
