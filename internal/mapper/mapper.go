@@ -28,18 +28,44 @@ func New(backend string, haProxyClient *haproxy.Client, useExternal bool) (Backe
 	return mapper, nil
 }
 
-func (m *Mapper) nextServer() (string, error) {
+func (m *Mapper) getServer() (string, error) {
 	var next string
 	if len(m.serverPool) == 0 {
 		log.WithFields(log.Fields{
 			"backend": m.backend,
 		}).Warn("server pool exhausted")
-		return "", fmt.Errorf("server pool exhausted")
+	
+    return "", fmt.Errorf("server pool exhausted")
 	}
 
 	next, m.serverPool = m.serverPool[0], m.serverPool[1:]
 
 	return next, nil
+}
+
+func (m* Mapper) nextServer() (string, error) {
+  next, err  := m.getServer()
+  if err == nil {
+    return next, nil 
+  }
+
+  // Attempt to reset the server pool since we don't seem to have any
+  if len(m.serverMap) == 0 {
+    log.WithFields(log.Fields{
+      "backend": m.backend,
+    }).Info("no servers configured, attempting to reset server pool")
+
+    if err := m.resetServerPool(); err != nil {
+      log.WithFields(log.Fields{
+        "backend": m.backend,
+      }).Warn("unble to reset server pool")
+
+      return "", err
+    }
+  } 
+
+  // try again.
+  return m.getServer()
 }
 
 func (m *Mapper) releaseServer(server string) {

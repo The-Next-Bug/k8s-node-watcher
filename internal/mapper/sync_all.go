@@ -1,10 +1,28 @@
 package mapper
 
 import (
+  "errors"
+  "time"
+
 	log "github.com/sirupsen/logrus"
 )
 
 func (m *Mapper) resetServerPool() error {
+  // HAProxy can take a moment to start up
+  for retries := 0; retries < 5; retries++ {
+    if err := m.tryResetServerPool(); err == nil {
+      return nil
+    }
+    log.WithFields(log.Fields{
+      "retries": retries,
+    }).Warn("unable to load servers for backend")
+    time.Sleep(5 * time.Second)
+  }
+
+  return errors.New("could not load servers for backend, failing")
+}
+
+func (m *Mapper) tryResetServerPool() error {
 	// Populate pool of servers
 	serverPool, err := m.haProxyClient.GetServerNames(m.backend)
 	if err != nil {

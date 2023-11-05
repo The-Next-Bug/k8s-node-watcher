@@ -1,6 +1,8 @@
 package haproxy
 
 import (
+  "errors"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,6 +30,10 @@ func (c *Client) GetBackendNames() ([]string, error) {
 		backends = append(backends, backend.Name)
 	}
 
+  if len(backends) == 0 {
+    return nil, errors.New("no backends found") 
+  }
+
 	return backends, nil
 }
 
@@ -48,6 +54,13 @@ func (c *Client) GetServerNames(backend string) ([]string, error) {
 	for _, server := range rawServers {
 		servers = append(servers, server.Name)
 	}
+
+  if len(servers) == 0 {
+    log.WithFields(log.Fields{
+      "backend": backend,
+    }).Error("no servers for backend")
+    return nil, errors.New("no servers for backend") 
+  }
 
 	return servers, nil
 }
